@@ -59,7 +59,7 @@ namespace Client.MirScenes.Dialogs
                 Sound = SoundList.ButtonA,
 
             };
-            AllButton.Click += (o, e) => RequestRanks(0);
+            AllButton.Click += (o, e) => RequestRanks(0); 
             TaoButton = new MirButton
             {
                 Index = 760,

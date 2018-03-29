@@ -20661,8 +20661,9 @@ Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = count });
                 }
             else
                 {
-                Enqueue(new S.Rankings { Listings = Envir.RankClass[RankType - 1], RankType = RankType, MyRank = (byte)Class == (RankType - 1) ? Info.Rank[1] : 0 });
-                }
+                //Enqueue(new S.Rankings { Listings = Envir.RankClass[RankType - 1], RankType = RankType, MyRank = (byte)Class == (RankType - 1) ? Info.Rank[1] : 0 }); 
+                Enqueue(new S.Rankings { Listings = Envir.RankTop, RankType = RankType, MyRank = Info.Rank[0] });
+            }
             }
 
         public void Opendoor(byte Doorindex)

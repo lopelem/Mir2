@@ -75,8 +75,10 @@ namespace Server.MirDatabase
                 DayofWeek = Convert.ToString(readerNPCInfo["DayofWeek"]);
                 ClassRequired = Convert.ToString(readerNPCInfo["ClassRequired"]);
                 Conquest = Convert.ToInt32(readerNPCInfo["Conquest"]);
-              
-            }
+                FlagNeeded = Convert.ToInt32(readerNPCInfo["FlagNeeded"]);
+
+
+        }
 
         public static void SaveNPCInfoDB(NPCInfo InfoNPCList)
             {
@@ -97,11 +99,11 @@ namespace Server.MirDatabase
 
                     if (count == 0)
                         {
-                        sqlCommand = "INSERT INTO  " + Settings.DBServer + ".npcinfo (MapIndex, IndexID, FileName, Name, Location_X, Location_Y, Rate, Image, HourStart, MinuteStart, HourEnd, MinuteEnd, TimeVisible, IsDefault, MinLev, MaxLev, DayofWeek, ClassRequired, Conquest) VALUES (@MapIndex, @IndexID, @FileName, @Name, @Location_X, @Location_Y, @Rate, @Image, @HourStart, @MinuteStart, @HourEnd, @MinuteEnd, @TimeVisible, @IsDefault, @MinLev, @MaxLev, @DayofWeek, @ClassRequired, @Conquest)";
+                        sqlCommand = "INSERT INTO  " + Settings.DBServer + ".npcinfo (MapIndex, IndexID, FileName, Name, Location_X, Location_Y, Rate, Image, HourStart, MinuteStart, HourEnd, MinuteEnd, TimeVisible, IsDefault, MinLev, MaxLev, DayofWeek, ClassRequired, Conquest, FlagNeeded) VALUES (@MapIndex, @IndexID, @FileName, @Name, @Location_X, @Location_Y, @Rate, @Image, @HourStart, @MinuteStart, @HourEnd, @MinuteEnd, @TimeVisible, @IsDefault, @MinLev, @MaxLev, @DayofWeek, @ClassRequired, @Conquest, @FlagNeeded)";
                         }
                     else
                         {
-                        sqlCommand = "UPDATE  " + Settings.DBServer + ".npcinfo SET MapIndex = @MapIndex, FileName = @FileName, IndexID = @IndexID, Name = @Name, Location_X = @Location_X, Location_Y = @Location_Y, Rate = @Rate, Image = @Image,  HourStart = @HourStart, MinuteStart = @MinuteStart, HourEnd = @HourEnd, MinuteEnd = @MinuteEnd, TimeVisible = @TimeVisible, IsDefault = @IsDefault, MinLev = @MinLev, MaxLev = @MaxLev,  DayofWeek = @DayofWeek, ClassRequired = @ClassRequired, Conquest = @Conquest WHERE IndexID = " + InfoNPCList.Index;
+                        sqlCommand = "UPDATE  " + Settings.DBServer + ".npcinfo SET MapIndex = @MapIndex, FileName = @FileName, IndexID = @IndexID, Name = @Name, Location_X = @Location_X, Location_Y = @Location_Y, Rate = @Rate, Image = @Image,  HourStart = @HourStart, MinuteStart = @MinuteStart, HourEnd = @HourEnd, MinuteEnd = @MinuteEnd, TimeVisible = @TimeVisible, IsDefault = @IsDefault, MinLev = @MinLev, MaxLev = @MaxLev,  DayofWeek = @DayofWeek, ClassRequired = @ClassRequired, Conquest = @Conquest, FlagNeeded = @FlagNeeded WHERE IndexID = " + InfoNPCList.Index;
                         }
                     }
 
@@ -126,6 +128,7 @@ namespace Server.MirDatabase
                     command.Parameters.AddWithValue("@DayofWeek", InfoNPCList.DayofWeek);
                     command.Parameters.AddWithValue("@ClassRequired", InfoNPCList.ClassRequired);
                     command.Parameters.AddWithValue("@Conquest", InfoNPCList.Conquest);
+                    command.Parameters.AddWithValue("@FlagNeeded", InfoNPCList.FlagNeeded);
 
                     command.ExecuteNonQuery();
                     command.Dispose();
