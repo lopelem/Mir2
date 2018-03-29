@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.IO;
+using System.Windows.Forms;
 using Server.MirDatabase;
 using Server.MirNetwork;
 using Server.MirObjects;
@@ -54,7 +55,7 @@ namespace Server.MirEnvir
         public static object AccountLock = new object();
         public static object LoadLock = new object();
 
-        public const int Version = 75;
+        public const int Version = 77;
         public const int CustomVersion = 0;
         public const string DatabasePath = @".\Server.MirDB";
         public const string AccountPath = @".\Server.MirADB";
@@ -115,6 +116,7 @@ namespace Server.MirEnvir
         public DragonInfo DragonInfo = new DragonInfo();
         public List<QuestInfo> QuestInfoList = new List<QuestInfo>();
         public List<GameShopItem> GameShopList = new List<GameShopItem>();
+        public List<RecipeInfo> RecipeInfoList = new List<RecipeInfo>();
         public Dictionary<int, int> GameshopLog = new Dictionary<int, int>();
 
         //User DB
@@ -200,7 +202,7 @@ namespace Server.MirEnvir
         public static long LastRunTime = 0;
         public int MonsterCount;
 
-        private long warTime, mailTime, guildTime, conquestTime;
+        private long warTime, mailTime, guildTime, conquestTime, rentalItemsTime;
         private int DailyTime = DateTime.Now.Day;
 
         private bool MagicExists(Spell spell)
@@ -415,6 +417,7 @@ namespace Server.MirEnvir
 
             //Custom
             if (!MagicExists(Spell.Portal)) MagicInfoList.Add(new MagicInfo { Name = "Portal", Spell = Spell.Portal, Icon = 1, Level1 = 7, Level2 = 11, Level3 = 14, Need1 = 150, Need2 = 350, Need3 = 700, BaseCost = 3, LevelCost = 2, Range = 9 });
+            if (!MagicExists(Spell.BattleCry)) MagicInfoList.Add(new MagicInfo {  Name = "BattleCry", Spell = Spell.BattleCry, Icon = 42, Level1 = 48, Level2 = 51, Level3 = 55, Need1 = 8000, Need2 = 11000, Need3 = 15000, BaseCost = 22, LevelCost = 10, Range = 0 });
         }
 
         private string CanStartEnvir()
@@ -854,6 +857,11 @@ namespace Server.MirEnvir
                     Conquests[i].Process();
             }
 
+            if (Time >= rentalItemsTime)
+            {
+                rentalItemsTime = Time + Settings.Minute * 5;
+                ProcessRentedItems();
+            }
 
         }
 
@@ -1084,7 +1092,6 @@ namespace Server.MirEnvir
             catch (Exception ex)
             {
             }
-
         }
 
         private void SaveConquests(bool forced = false)
@@ -1253,7 +1260,11 @@ namespace Server.MirEnvir
                     {
                         count = reader.ReadInt32();
                         for (int i = 0; i < count; i++)
-                            MagicInfoList.Add(new MagicInfo(reader, LoadVersion, LoadCustomVersion));
+                        {
+                            var m = new MagicInfo(reader, LoadVersion, LoadCustomVersion);
+                            if(!MagicExists(m.Spell))
+                                MagicInfoList.Add(m);
+                        }
                     }
                     FillMagicInfoList();
                     if (LoadVersion <= 70)
@@ -1285,6 +1296,7 @@ namespace Server.MirEnvir
 
                     if (LoadVersion > 67)
                         RespawnTick = new RespawnTimer(reader);
+
                 }
 
                 Settings.LinkGuildCreationItems(ItemInfoList);
@@ -1446,8 +1458,6 @@ namespace Server.MirEnvir
                 }
 
                 if (count != GuildCount) GuildCount = count;
-
-                
             }
         }
 
@@ -1857,6 +1867,14 @@ namespace Server.MirEnvir
             MonsterCount = 0;
 
             LoadDB();
+
+            RecipeInfoList.Clear();
+            foreach (var recipe in Directory.GetFiles(Settings.RecipePath, "*.txt")
+                .Select(path => Path.GetFileNameWithoutExtension(path))
+                .ToArray())
+                RecipeInfoList.Add(new RecipeInfo(recipe));
+
+            SMain.Enqueue(string.Format("{0} Recipes loaded.", RecipeInfoList.Count));
 
             for (int i = 0; i < MapInfoList.Count; i++)
                 MapInfoList[i].CreateMap();
@@ -2532,6 +2550,20 @@ namespace Server.MirEnvir
             return item;
         }
 
+        public UserItem CreateShopItem(ItemInfo info)
+        {
+            if (info == null) return null;
+
+            UserItem item = new UserItem(info)
+            {
+                UniqueID = ++NextUserItemID,
+                CurrentDura = info.Durability,
+                MaxDura = info.Durability,
+            };
+
+            return item;
+        }
+
         public void UpdateItemExpiry(UserItem item)
         {
             //can't have expiry on usable items
@@ -2849,6 +2881,119 @@ namespace Server.MirEnvir
                     c.Player.CallDefaultNPC(DefaultNPCType.Daily);
                 }
             }
+        }
+
+        private void ProcessRentedItems()
+        {
+            foreach (var characterInfo in CharacterList)
+            {
+                if (characterInfo.RentedItems.Count <= 0)
+                    continue;
+
+                foreach (var rentedItemInfo in characterInfo.RentedItems)
+                {
+                    if (rentedItemInfo.ItemReturnDate >= Now)
+                        continue;
+
+                    var rentingPlayer = GetCharacterInfo(rentedItemInfo.RentingPlayerName);
+
+                    for (var i = 0; i < rentingPlayer.Inventory.Length; i++)
+                    {
+                        if (rentedItemInfo.ItemId != rentingPlayer?.Inventory[i]?.UniqueID)
+                            continue;
+
+                        var item = rentingPlayer.Inventory[i];
+
+                        if (item?.RentalInformation == null)
+                            continue;
+
+                        if (Now <= item.RentalInformation.ExpiryDate)
+                            continue;
+
+                        ReturnRentalItem(item, item.RentalInformation.OwnerName, rentingPlayer, false);
+                        rentingPlayer.Inventory[i] = null;
+                        rentingPlayer.HasRentedItem = false;
+
+                        if (rentingPlayer.Player == null)
+                            continue;
+
+                        rentingPlayer.Player.ReceiveChat($"{item.Info.FriendlyName} has just expired from your inventory.", ChatType.Hint);
+                        rentingPlayer.Player.Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
+                        rentingPlayer.Player.RefreshStats();
+                    }
+
+                    for (var i = 0; i < rentingPlayer.Equipment.Length; i++)
+                    {
+                        var item = rentingPlayer.Equipment[i];
+
+                        if (item?.RentalInformation == null)
+                            continue;
+
+                        if (Now <= item.RentalInformation.ExpiryDate)
+                            continue;
+
+                        ReturnRentalItem(item, item.RentalInformation.OwnerName, rentingPlayer, false);
+                        rentingPlayer.Equipment[i] = null;
+                        rentingPlayer.HasRentedItem = false;
+                        
+                        if (rentingPlayer.Player == null)
+                            continue;
+
+                        rentingPlayer.Player.ReceiveChat($"{item.Info.FriendlyName} has just expired from your inventory.", ChatType.Hint);
+                        rentingPlayer.Player.Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = item.Count });
+                        rentingPlayer.Player.RefreshStats();
+                    }
+                }
+            }
+
+            foreach (var characterInfo in CharacterList)
+            {
+                if (characterInfo.RentedItemsToRemove.Count <= 0)
+                    continue;
+
+                foreach (var rentalInformationToRemove in characterInfo.RentedItemsToRemove)
+                    characterInfo.RentedItems.Remove(rentalInformationToRemove);
+
+                characterInfo.RentedItemsToRemove.Clear();
+            }
+        }
+
+        public bool ReturnRentalItem(UserItem rentedItem, string ownerName, CharacterInfo rentingCharacterInfo, bool removeNow = true)
+        {
+            if (rentedItem.RentalInformation == null)
+                return false;
+
+            var owner = GetCharacterInfo(ownerName);
+            var returnItems = new List<UserItem>();
+
+            foreach (var rentalInformation in owner.RentedItems)
+                if (rentalInformation.ItemId == rentedItem.UniqueID)
+                    owner.RentedItemsToRemove.Add(rentalInformation);
+            
+            rentedItem.RentalInformation.BindingFlags = BindMode.none;
+            rentedItem.RentalInformation.RentalLocked = true;
+            rentedItem.RentalInformation.ExpiryDate = rentedItem.RentalInformation.ExpiryDate.AddDays(1);
+
+            returnItems.Add(rentedItem);
+
+            var mail = new MailInfo(owner.Index, true)
+            {
+                Sender = rentingCharacterInfo.Name,
+                Message = rentedItem.Info.FriendlyName,
+                Items = returnItems
+            };
+
+            mail.Send();
+
+            if (removeNow)
+            {
+                foreach (var rentalInformationToRemove in owner.RentedItemsToRemove)
+                    owner.RentedItems.Remove(rentalInformationToRemove);
+
+                owner.RentedItemsToRemove.Clear();
+            }
+
+            return true;
         }
 
         private void ClearDailyQuests(CharacterInfo info)

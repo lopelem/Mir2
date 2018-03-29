@@ -212,6 +212,8 @@ namespace Server.MirObjects
                     return new HellLord(info);
                 case 99:
                     return new HellBomb(info);
+                case 100:
+                    return new VenomSpider(info);
 
                 //unfinished
                 case 253:
@@ -454,7 +456,7 @@ namespace Server.MirObjects
         {
             RefreshBase();
             
-                MaxHP = (ushort)Math.Min(ushort.MaxValue, MaxHP + PetLevel * 20);
+                MaxHP = (uint)Math.Min(uint.MaxValue, MaxHP + PetLevel * 20);
                 MinAC = (ushort)Math.Min(ushort.MaxValue, MinAC + PetLevel * 2);
                 MaxAC = (ushort)Math.Min(ushort.MaxValue, MaxAC + PetLevel * 2);
                 MinMAC = (ushort)Math.Min(ushort.MaxValue, MinMAC + PetLevel * 2);
@@ -778,6 +780,7 @@ namespace Server.MirObjects
                 else
                 {
                     UserItem item = Envir.CreateDropItem(drop.Item);
+
                     if (item == null) continue;
 
                     if (EXPOwner != null && EXPOwner.Race == ObjectType.Player)
@@ -798,13 +801,22 @@ namespace Server.MirObjects
 
         protected virtual bool DropItem(UserItem item)
         {
-            if (CurrentMap.Info.NoDropMonster) return false;
+            if (CurrentMap.Info.NoDropMonster)
+                return false;
 
             ItemObject ob = new ItemObject(this, item)
             {
                 Owner = EXPOwner,
                 OwnerTime = Envir.Time + Settings.Minute,
             };
+
+            if (!item.Info.GlobalDropNotify)
+                return ob.Drop(Settings.DropRange);
+
+            foreach (var player in Envir.Players)
+            {
+                player.ReceiveChat($"{Name} has dropped {item.FriendlyName}.", ChatType.System2);
+            }
 
             return ob.Drop(Settings.DropRange);
         }
@@ -1964,17 +1976,17 @@ namespace Server.MirObjects
                 attacker.DamageWeapon();
             damage += attacker.AttackBonus;
 
-            if ((attacker.CriticalRate * Settings.CriticalRateWeight) > Envir.Random.Next(100))
-            {
-                Broadcast(new S.ObjectEffect { ObjectID = ObjectID, Effect = SpellEffect.Critical});
-                damage = Math.Min(int.MaxValue, damage + (int)Math.Floor(damage * (((double)attacker.CriticalDamage / (double)Settings.CriticalDamageWeight) * 10)));
-                BroadcastDamageIndicator(DamageType.Critical);
-            }
-
             if (armour >= damage)
             {
                 BroadcastDamageIndicator(DamageType.Miss);
                 return 0;
+            }
+
+            if ((attacker.CriticalRate * Settings.CriticalRateWeight) > Envir.Random.Next(100))
+            {
+                Broadcast(new S.ObjectEffect { ObjectID = ObjectID, Effect = SpellEffect.Critical });
+                damage = Math.Min(int.MaxValue, damage + (int)Math.Floor(damage * (((double)attacker.CriticalDamage / (double)Settings.CriticalDamageWeight) * 10)));
+                BroadcastDamageIndicator(DamageType.Critical);
             }
 
             if (attacker.LifeOnHit > 0)
@@ -2107,7 +2119,7 @@ namespace Server.MirObjects
                     armour = GetDefencePower(MinMAC, MaxMAC);
                     break;
                 case DefenceType.MAC:
-                    armour = GetDefencePower(MinAC, MaxAC);
+                    armour = GetDefencePower(MinMAC, MaxMAC);
                     break;
                 case DefenceType.Agility:
                     if (Envir.Random.Next(Agility + 1) > attacker.Accuracy)
@@ -2146,7 +2158,7 @@ namespace Server.MirObjects
 
             else if (attacker.Master != null)
             {
-                if (!Functions.InRange(attacker.CurrentLocation, attacker.Master.CurrentLocation, Globals.DataRange))
+                if (attacker.CurrentMap != attacker.Master.CurrentMap || !Functions.InRange(attacker.CurrentLocation, attacker.Master.CurrentLocation, Globals.DataRange))
                     EXPOwner = null;
                 else
                 {
@@ -2184,7 +2196,7 @@ namespace Server.MirObjects
                     armour = GetDefencePower(MinMAC, MaxMAC);
                     break;
                 case DefenceType.MAC:
-                    armour = GetDefencePower(MinAC, MaxAC);
+                    armour = GetDefencePower(MinMAC, MaxMAC);
                     break;
                 case DefenceType.Agility:
                     break;

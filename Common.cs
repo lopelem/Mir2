@@ -9,6 +9,23 @@ using C = ClientPackets;
 using S = ServerPackets;
 using System.Linq;
 
+public enum PanelType : byte
+{
+    Buy = 0,
+    Sell,
+    Repair,
+    SpecialRepair,
+    Consign,
+    Craft,
+    Refine,
+    CheckRefine,
+    Disassemble,
+    Downgrade,
+    Reset,
+    CollectRefine,
+    ReplaceWedRing,
+}
+
 public enum BlendMode : sbyte
 {
     NONE = -1,
@@ -165,7 +182,8 @@ public enum IntelligentCreatureType : byte
     OlympicFlame = 8,
     BabySnowMan = 9,
     Frog = 10,
-    BabyMonkey = 11
+    BabyMonkey = 11,
+    AngryBird = 12
 }
 
 //1 blank mob files
@@ -317,7 +335,7 @@ public enum Monster : ushort
     BrownFrogSpider = 138,
     ArcherGuard = 139,
     KatanaGuard = 140,
-    //BLANK_141 = 141,
+    ArcherGuard2 = 141,
     Pig = 142,
     Bull = 143,
     Bush = 144,
@@ -354,7 +372,7 @@ public enum Monster : ushort
         SiegeRepairman = 175, //not added frames
     BlueSanta = 176,//done
     BattleStandard = 177,//done
-    ArcherGuard2 = 178,//done
+    //ArcherGuard2 = 178,//done
     RedYimoogi = 179,//done
     LionRiderMale = 180, //frames not added
     LionRiderFemale = 181, //frames not added
@@ -616,6 +634,7 @@ public enum Monster : ushort
     BabySnowMan = 10009,//unknown
     Frog = 10010,//unknown
     BabyMonkey = 10011,//unknown
+    AngryBird = 10012,
 }
 
 public enum MirAction : byte
@@ -806,6 +825,9 @@ public enum MirGridType : byte
     AwakenItem = 14,
     Mail = 15,
     Refine = 16,
+    Renting = 17,
+    GuestRenting = 18,
+    Craft = 19
 }
 
 public enum EquipmentSlot : byte
@@ -898,6 +920,8 @@ public enum BindMode : short
     BindOnEquip = 512,//0x0200
     NoSRepair = 1024,//0x0400
     NoWeddingRing = 2048,//0x0800
+    UnableToRent = 4096,
+    UnableToDisassemble = 8192
 }
 
 [Flags]
@@ -916,6 +940,7 @@ public enum SpecialItemMode : short
     Probe = 0x0100,
     Skill = 0x0200,
     NoDuraLoss = 0x0400,
+    Blink = 0x800,
 }
 
 [Flags]
@@ -942,11 +967,17 @@ public enum RequiredGender : byte
 public enum RequiredType : byte
 {
     Level = 0,
-    AC = 1,
-    MAC = 2,
-    DC = 3,
-    MC = 4,
-    SC = 5,
+    MaxAC = 1,
+    MaxMAC = 2,
+    MaxDC = 3,
+    MaxMC = 4,
+    MaxSC = 5,
+    MaxLevel = 6,
+    MinAC = 7,
+    MinMAC = 8,
+    MinDC = 9,
+    MinMC = 10,
+    MinSC = 11,
 }
 
 [Obfuscation(Feature = "renaming", Exclude = true)]
@@ -1107,6 +1138,7 @@ public enum Spell : byte
     //Custom
     Blink = 151,
     Portal = 152,
+    BattleCry = 153,
     
     //Map Events
     DigOutZombie = 200,
@@ -1317,6 +1349,7 @@ public enum ServerPacketIds : short
     NPCReplaceWedRing,
     NPCStorage,
     SellItem,
+    CraftItem,
     RepairItem,
     ItemRepaired,
     NewMagic,
@@ -1446,6 +1479,20 @@ public enum ServerPacketIds : short
     GameShopStock,
     Rankings,
     Opendoor,
+
+    GetRentedItems,
+    ItemRentalRequest,
+    ItemRentalFee,
+    ItemRentalPeriod,
+    DepositRentalItem,
+    RetrieveRentalItem,
+    UpdateRentalItem,
+    CancelItemRental,
+    ItemRentalLock,
+    ItemRentalPartnerLock,
+    CanConfirmItemRental,
+    ConfirmItemRental,
+    NewRecipeInfo
 }
 
 public enum ClientPacketIds : short
@@ -1495,6 +1542,7 @@ public enum ClientPacketIds : short
     TalkMonsterNPC,
     BuyItem,
     SellItem,
+    CraftItem,
     RepairItem,
     BuyItemBack,
     SRepairItem,
@@ -1578,6 +1626,17 @@ public enum ClientPacketIds : short
     ReportIssue,
     GetRanking,
     Opendoor,
+
+    GetRentedItems,
+    ItemRentalRequest,
+    ItemRentalFee,
+    ItemRentalPeriod,
+    DepositRentalItem,
+    RetrieveRentalItem,
+    CancelItemRental,
+    ItemRentalLockFee,
+    ItemRentalLockItem,
+    ConfirmItemRental
 }
 
 public enum ConquestType : byte
@@ -2556,7 +2615,7 @@ public class ItemInfo
     public byte Strong;
     public byte MagicResist, PoisonResist, HealthRecovery, SpellRecovery, PoisonRecovery, HPrate, MPrate;
     public byte CriticalRate, CriticalDamage;
-    public bool NeedIdentify, ShowGroupPickup;
+    public bool NeedIdentify, ShowGroupPickup, GlobalDropNotify;
     public bool ClassBased;
     public bool LevelBased;
     public bool CanMine;
@@ -2665,6 +2724,10 @@ public class ItemInfo
             ClassBased = (bools & 0x04) == 0x04;
             LevelBased = (bools & 0x08) == 0x08;
             CanMine = (bools & 0x10) == 0x10;
+
+            if (version >= 77)
+                GlobalDropNotify = (bools & 0x20) == 0x20;
+
             MaxAcRate = reader.ReadByte();
             MaxMacRate = reader.ReadByte();
             Holy = reader.ReadByte();
@@ -2780,6 +2843,7 @@ public class ItemInfo
         if (ClassBased) bools |= 0x04;
         if (LevelBased) bools |= 0x08;
         if (CanMine) bools |= 0x10;
+        if (GlobalDropNotify) bools |= 0x20;
         writer.Write(bools);
         writer.Write(MaxAcRate);
         writer.Write(MaxMacRate);
@@ -2945,6 +3009,7 @@ public class UserItem
     public DateTime BuybackExpiryDate;
 
     public ExpireInfo ExpireInfo;
+    public RentalInformation RentalInformation;
 
 	public Awake Awake = new Awake();
     public bool IsAdded
@@ -3048,10 +3113,13 @@ public class UserItem
         if (version < 65) return;
 
         if (reader.ReadBoolean())
-        {
             ExpireInfo = new ExpireInfo(reader, version, Customversion);
-        }
 
+        if (version < 76)
+            return;
+
+        if (reader.ReadBoolean())
+            RentalInformation = new RentalInformation(reader, version, Customversion);
     }
 
     public void Save(BinaryWriter writer)
@@ -3113,11 +3181,10 @@ public class UserItem
         writer.Write(WeddingRing);
 
         writer.Write(ExpireInfo != null);
+        ExpireInfo?.Save(writer);
 
-        if (ExpireInfo != null)
-        {
-            ExpireInfo.Save(writer);
-        }
+        writer.Write(RentalInformation != null);
+        RentalInformation?.Save(writer);
     }
 
 
@@ -3150,9 +3217,10 @@ public class UserItem
     }
     public uint RepairPrice()
     {
-        if (Info == null || Info.Durability == 0) return 0;
+        if (Info == null || Info.Durability == 0)
+            return 0;
 
-        uint p = Info.Price;
+        var p = Info.Price;
 
         if (Info.Durability > 0)
         {
@@ -3161,7 +3229,12 @@ public class UserItem
 
         }
 
-        return (p * Count) - Price();
+        var cost = p * Count - Price();
+
+        if (RentalInformation == null)
+            return cost;
+
+        return cost * 2;
     }
 
     public uint Quality()
@@ -3318,8 +3391,9 @@ public class UserItem
             RefinedValue = RefinedValue,
             RefineAdded = RefineAdded,
 
-            ExpireInfo = ExpireInfo
-            };
+            ExpireInfo = ExpireInfo,
+            RentalInformation = RentalInformation
+        };
 
         return item;
     }
@@ -3343,6 +3417,33 @@ public class ExpireInfo
     public void Save(BinaryWriter writer)
     {
         writer.Write(ExpiryDate.ToBinary());
+    }
+}
+
+public class RentalInformation
+{
+    public string OwnerName;
+    public BindMode BindingFlags = BindMode.none;
+    public DateTime ExpiryDate;
+    public bool RentalLocked;
+
+    public RentalInformation()
+    { }
+
+    public RentalInformation(BinaryReader reader, int version = int.MaxValue, int CustomVersion = int.MaxValue)
+    {
+        OwnerName = reader.ReadString();
+        BindingFlags = (BindMode)reader.ReadInt16();
+        ExpiryDate = DateTime.FromBinary(reader.ReadInt64());
+        RentalLocked = reader.ReadBoolean();
+    }
+
+    public void Save(BinaryWriter writer)
+    {
+        writer.Write(OwnerName);
+        writer.Write((short)BindingFlags);
+        writer.Write(ExpiryDate.ToBinary());
+        writer.Write(RentalLocked);
     }
 }
 
@@ -3483,9 +3584,14 @@ public class Awake
 
     public bool CheckAwakening(UserItem item, AwakeType type)
     {
-        if (item.Info.CanAwakening != true) return false;
+        if (item.Info.Bind.HasFlag(BindMode.DontUpgrade))
+            return false;
 
-        if (item.Info.Grade == ItemGrade.None) return false;
+        if (item.Info.CanAwakening != true)
+            return false;
+
+        if (item.Info.Grade == ItemGrade.None)
+            return false;
 
         if (IsMaxLevel()) return false;
 
@@ -4448,6 +4554,8 @@ public abstract class Packet
                 return new C.BuyItem();
             case (short)ClientPacketIds.SellItem:
                 return new C.SellItem();
+            case (short)ClientPacketIds.CraftItem:
+                return new C.CraftItem();
             case (short)ClientPacketIds.RepairItem:
                 return new C.RepairItem();
             case (short)ClientPacketIds.BuyItemBack:
@@ -4602,6 +4710,26 @@ public abstract class Packet
                 return new C.GetRanking();
             case (short)ClientPacketIds.Opendoor:
                 return new C.Opendoor();
+            case (short)ClientPacketIds.GetRentedItems:
+                return new C.GetRentedItems();
+            case (short)ClientPacketIds.ItemRentalRequest:
+                return new C.ItemRentalRequest();
+            case (short)ClientPacketIds.ItemRentalFee:
+                return new C.ItemRentalFee();
+            case (short)ClientPacketIds.ItemRentalPeriod:
+                return new C.ItemRentalPeriod();
+            case (short)ClientPacketIds.DepositRentalItem:
+                return new C.DepositRentalItem();
+            case (short)ClientPacketIds.RetrieveRentalItem:
+                return new C.RetrieveRentalItem();
+            case (short)ClientPacketIds.CancelItemRental:
+                return new C.CancelItemRental();
+            case (short)ClientPacketIds.ItemRentalLockFee:
+                return new C.ItemRentalLockFee();
+            case (short)ClientPacketIds.ItemRentalLockItem:
+                return new C.ItemRentalLockItem();
+            case (short)ClientPacketIds.ConfirmItemRental:
+                return new C.ConfirmItemRental();
             default:
                 return null;
         }
@@ -4803,6 +4931,8 @@ public abstract class Packet
                 return new S.NPCStorage();
             case (short)ServerPacketIds.SellItem:
                 return new S.SellItem();
+            case (short)ServerPacketIds.CraftItem:
+                return new S.CraftItem();
             case (short)ServerPacketIds.RepairItem:
                 return new S.RepairItem();
             case (short)ServerPacketIds.ItemRepaired:
@@ -5055,6 +5185,32 @@ public abstract class Packet
                 return new S.Rankings();
             case (short)ServerPacketIds.Opendoor:
                 return new S.Opendoor();
+            case (short)ServerPacketIds.GetRentedItems:
+                return new S.GetRentedItems();
+            case (short)ServerPacketIds.ItemRentalRequest:
+                return new S.ItemRentalRequest();
+            case (short)ServerPacketIds.ItemRentalFee:
+                return new S.ItemRentalFee();
+            case (short)ServerPacketIds.ItemRentalPeriod:
+                return new S.ItemRentalPeriod();
+            case (short)ServerPacketIds.DepositRentalItem:
+                return new S.DepositRentalItem();
+            case (short)ServerPacketIds.RetrieveRentalItem:
+                return new S.RetrieveRentalItem();
+            case (short)ServerPacketIds.UpdateRentalItem:
+                return new S.UpdateRentalItem();
+            case (short)ServerPacketIds.CancelItemRental:
+                return new S.CancelItemRental();
+            case (short)ServerPacketIds.ItemRentalLock:
+                return new S.ItemRentalLock();
+            case (short)ServerPacketIds.ItemRentalPartnerLock:
+                return new S.ItemRentalPartnerLock();
+            case (short)ServerPacketIds.CanConfirmItemRental:
+                return new S.CanConfirmItemRental();
+            case (short)ServerPacketIds.ConfirmItemRental:
+                return new S.ConfirmItemRental();
+            case (short)ServerPacketIds.NewRecipeInfo:
+                return new S.NewRecipeInfo();
             default:
                 return null;
         }
@@ -6132,4 +6288,64 @@ public class Door
     public byte ImageIndex;
     public long LastTick;
     public Point Location;
+}
+
+public class ItemRentalInformation
+{
+    public ulong ItemId;
+    public string ItemName;
+    public string RentingPlayerName;
+    public DateTime ItemReturnDate;
+
+    public ItemRentalInformation()
+    { }
+
+    public ItemRentalInformation(BinaryReader reader)
+    {
+        ItemId = reader.ReadUInt64();
+        ItemName = reader.ReadString();
+        RentingPlayerName = reader.ReadString();
+        ItemReturnDate = DateTime.FromBinary(reader.ReadInt64());
+    }
+
+    public void Save(BinaryWriter writer)
+    {
+        writer.Write(ItemId);
+        writer.Write(ItemName);
+        writer.Write(RentingPlayerName);
+        writer.Write(ItemReturnDate.ToBinary());
+    }
+}
+
+public class ClientRecipeInfo
+{
+    public UserItem Item;
+    public List<UserItem> Ingredients = new List<UserItem>();
+
+    public ClientRecipeInfo()
+    {
+
+    }
+
+    public ClientRecipeInfo(BinaryReader reader)
+    {
+        Item = new UserItem(reader);
+
+        int count = reader.ReadInt32();
+        for (int i = 0; i < count; i++)
+        {
+            Ingredients.Add(new UserItem(reader));
+        }
+    }
+
+    public void Save(BinaryWriter writer)
+    {
+        Item.Save(writer);
+
+        writer.Write(Ingredients.Count);
+        foreach (var ingredient in Ingredients)
+        {
+            ingredient.Save(writer);
+        }
+    }
 }

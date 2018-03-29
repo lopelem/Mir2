@@ -22,21 +22,6 @@ using System.Drawing.Imaging;
 
 namespace Client.MirScenes
 {
-    public enum PanelType
-    {
-        Sell, 
-        Repair, 
-        SpecialRepair,
-        Consign, 
-        Disassemble, 
-        Downgrade,
-        Reset,
-        Refine,
-        CheckRefine,
-        CollectRefine,
-        ReplaceWedRing,
-    }
-
     public sealed class GameScene : MirScene
     {
         public static GameScene Scene;
@@ -56,6 +41,7 @@ namespace Client.MirScenes
         public ChatControlBar ChatControl;
         public InventoryDialog InventoryDialog;
         public CharacterDialog CharacterDialog;
+        public CraftDialog CraftDialog;
         public StorageDialog StorageDialog;
         public BeltDialog BeltDialog;
         public MiniMapDialog MiniMapDialog;
@@ -112,6 +98,14 @@ namespace Client.MirScenes
 
         public ReportDialog ReportDialog;
 
+        public ItemRentingDialog ItemRentingDialog;
+        public ItemRentDialog ItemRentDialog;
+        public GuestItemRentingDialog GuestItemRentingDialog;
+        public GuestItemRentDialog GuestItemRentDialog;
+        public ItemRentalDialog ItemRentalDialog;
+
+        public BuffDialog BuffsDialog;
+
         //not added yet
         public KeyboardLayoutDialog KeyboardLayoutDialog;
 
@@ -120,6 +114,7 @@ namespace Client.MirScenes
         public static List<ChatItem> ChatItemList = new List<ChatItem>();
         public static List<ClientQuestInfo> QuestInfoList = new List<ClientQuestInfo>();
         public static List<GameShopItem> GameShopInfoList = new List<GameShopItem>();
+        public static List<ClientRecipeInfo> RecipeInfoList = new List<ClientRecipeInfo>();
 
         public List<Buff> Buffs = new List<Buff>();
 
@@ -161,8 +156,6 @@ namespace Client.MirScenes
         public MirLabel[] OutputLines = new MirLabel[10];
         public List<OutPutMessage> OutputMessages = new List<OutPutMessage>();
 
-        public List<MirImageControl> BuffList = new List<MirImageControl>();
-
         public long OutputDelay;
 
         public GameScene()
@@ -190,6 +183,7 @@ namespace Client.MirScenes
             CharacterDialog = new CharacterDialog { Parent = this, Visible = false };
             BeltDialog = new BeltDialog { Parent = this };
             StorageDialog = new StorageDialog { Parent = this, Visible = false };
+            CraftDialog = new CraftDialog { Parent = this, Visible = false };
             MiniMapDialog = new MiniMapDialog { Parent = this };
             InspectDialog = new InspectDialog { Parent = this, Visible = false };
             OptionDialog = new OptionDialog { Parent = this, Visible = false };
@@ -248,6 +242,14 @@ namespace Client.MirScenes
             GameShopDialog = new GameShopDialog { Parent = this, Visible = false };
 
             ReportDialog = new ReportDialog { Parent = this, Visible = false };
+
+            ItemRentingDialog = new ItemRentingDialog { Parent = this, Visible = false };
+            ItemRentDialog = new ItemRentDialog { Parent = this, Visible = false };
+            GuestItemRentingDialog = new GuestItemRentingDialog { Parent = this, Visible = false };
+            GuestItemRentDialog = new GuestItemRentDialog { Parent = this, Visible = false };
+            ItemRentalDialog = new ItemRentalDialog { Parent = this, Visible = false };
+
+            BuffsDialog = new BuffDialog {Parent = this, Visible = true};
 
             //not added yet
             KeyboardLayoutDialog = new KeyboardLayoutDialog { Parent = this, Visible = false };
@@ -466,6 +468,7 @@ namespace Client.MirScenes
                         MailListDialog.Hide();
                         MailReadLetterDialog.Hide();
                         MailReadParcelDialog.Hide();
+                        ItemRentalDialog.Visible = false;
 
 
 
@@ -529,6 +532,9 @@ namespace Client.MirScenes
                         break;
                     case KeybindOptions.Trade:
                         Network.Enqueue(new C.TradeRequest());
+                        break;
+                    case KeybindOptions.Rental:
+                        ItemRentalDialog.Toggle();
                         break;
                     case KeybindOptions.ChangePetmode:
                         switch (PMode)
@@ -868,14 +874,14 @@ namespace Client.MirScenes
                 Network.Enqueue(new C.KeepAlive() { Time = CMain.Time });
             }
 
-            MirItemCell cell = MouseControl as MirItemCell;
+            //MirItemCell cell = MouseControl as MirItemCell;
 
-            if (cell != null && HoverItem != cell.Item)
-            {
-                DisposeItemLabel();
-                HoverItem = null;
-                CreateItemLabel(cell.Item);
-            }
+            //if (cell != null && HoverItem != cell.Item)
+            //{
+            //    DisposeItemLabel();
+            //    HoverItem = null;
+            //    CreateItemLabel(cell.Item);
+            //}
 
             if (ItemLabel != null && !ItemLabel.IsDisposed)
             {
@@ -948,9 +954,9 @@ namespace Client.MirScenes
 
                 messageBox.Show();
             }
-            
-            
-            UpdateBuffs();
+
+            BuffsDialog.Process();
+
             MapControl.Process();
             MainDialog.Process();
             InventoryDialog.Process();
@@ -1236,6 +1242,9 @@ namespace Client.MirScenes
                     break;
                 case (short)ServerPacketIds.SellItem:
                     SellItem((S.SellItem)p);
+                    break;
+                case (short)ServerPacketIds.CraftItem:
+                    CraftItem((S.CraftItem)p);
                     break;
                 case (short)ServerPacketIds.RepairItem:
                     RepairItem((S.RepairItem)p);
@@ -1611,241 +1620,48 @@ namespace Client.MirScenes
                 case (short)ServerPacketIds.Opendoor:
                     Opendoor((S.Opendoor)p);
                     break;
+                case (short)ServerPacketIds.GetRentedItems:
+                    RentedItems((S.GetRentedItems) p);
+                    break;
+                case (short)ServerPacketIds.ItemRentalRequest:
+                    ItemRentalRequest((S.ItemRentalRequest)p);
+                    break;
+                case (short)ServerPacketIds.ItemRentalFee:
+                    ItemRentalFee((S.ItemRentalFee)p);
+                    break;
+                case (short)ServerPacketIds.ItemRentalPeriod:
+                    ItemRentalPeriod((S.ItemRentalPeriod)p);
+                    break;
+                case (short)ServerPacketIds.DepositRentalItem:
+                    DepositRentalItem((S.DepositRentalItem)p);
+                    break;
+                case (short)ServerPacketIds.RetrieveRentalItem:
+                    RetrieveRentalItem((S.RetrieveRentalItem)p);
+                    break;
+                case (short)ServerPacketIds.UpdateRentalItem:
+                    UpdateRentalItem((S.UpdateRentalItem)p);
+                    break;
+                case (short)ServerPacketIds.CancelItemRental:
+                    CancelItemRental((S.CancelItemRental)p);
+                    break;
+                case (short)ServerPacketIds.ItemRentalLock:
+                    ItemRentalLock((S.ItemRentalLock)p);
+                    break;
+                case (short)ServerPacketIds.ItemRentalPartnerLock:
+                    ItemRentalPartnerLock((S.ItemRentalPartnerLock)p);
+                    break;
+                case (short)ServerPacketIds.CanConfirmItemRental:
+                    CanConfirmItemRental((S.CanConfirmItemRental)p);
+                    break;
+                case (short)ServerPacketIds.ConfirmItemRental:
+                    ConfirmItemRental((S.ConfirmItemRental)p);
+                    break;
                 default:
                     base.ProcessPacket(p);
                     break;
             }
         }
 
-        public void CreateBuff(Buff buff)
-        {
-            string text = "";
-            int buffImage = BuffImage(buff.Type);
-
-            MLibrary buffLibrary = Libraries.BuffIcon;
-
-            if (buffImage >= 20000)
-            {
-                buffImage -= 20000;
-                buffLibrary = Libraries.MagIcon;
-            }
-
-            if (buffImage >= 10000)
-            {
-                buffImage -= 10000;
-                buffLibrary = Libraries.Prguse2;
-            }
-
-            MirImageControl image = new MirImageControl
-            {
-                Library = buffLibrary,
-                Parent = this,
-                Visible = true,
-                Sort = false,
-                Index = buffImage
-            };
-
-            new MirLabel
-            {
-                DrawFormat = TextFormatFlags.Right,
-                NotControl = true,
-                ForeColour = Color.Yellow,
-                Location = new Point(-7, 10),
-                Size = new Size(30, 20),
-                Parent = image
-            };
-            
-            switch (buff.Type)
-            {
-                case BuffType.UltimateEnhancer:
-                    if (GameScene.User.Class == MirClass.Wizard || GameScene.User.Class == MirClass.Archer)
-                    {
-                        text = string.Format("MC increased by 0-{0} for {1} seconds.", buff.Values[0], (buff.Expire - CMain.Time) / 1000);
-                    }
-                    else if (GameScene.User.Class == MirClass.Taoist)
-                    {
-                        text = string.Format("SC increased by 0-{0} for {1} seconds.", buff.Values[0], (buff.Expire - CMain.Time) / 1000);
-                    }
-                    else
-                    {
-                        text = string.Format("DC increased by 0-{0} for {1} seconds.", buff.Values[0], (buff.Expire - CMain.Time) / 1000);
-                    }
-                    break;
-                case BuffType.Impact:
-                    text = string.Format("DC increased by 0-{0} for {1} seconds.", buff.Values[0], (buff.Expire - CMain.Time) / 1000);
-                    break;
-                case BuffType.Magic:
-                    text = string.Format("MC increased by 0-{0} for {1} seconds.", buff.Values[0], (buff.Expire - CMain.Time) / 1000);
-                    break;
-                case BuffType.Taoist:
-                    text = string.Format("SC increased by 0-{0} for {1} seconds.", buff.Values[0], (buff.Expire - CMain.Time) / 1000);
-                    break;
-                case BuffType.Storm:
-                    text = string.Format("A.Speed increased by {0} for {1} seconds.", buff.Values[0], (buff.Expire - CMain.Time) / 1000);
-                    break;
-                case BuffType.HealthAid:
-                    text = string.Format("HP increased by {0} for {1} seconds.", buff.Values[0], (buff.Expire - CMain.Time) / 1000);
-                    break;
-                case BuffType.ManaAid:
-                    text = string.Format("MP increased by {0} for {1} seconds.", buff.Values[0], (buff.Expire - CMain.Time) / 1000);
-                    break;
-                case BuffType.Defence:
-                    text = string.Format("Max AC increased by {0} for {1} seconds.", buff.Values[0], (buff.Expire - CMain.Time) / 1000);
-                    break;
-                case BuffType.MagicDefence:
-                    text = string.Format("Max MAC increased by {0} for {1} seconds.", buff.Values[0], (buff.Expire - CMain.Time) / 1000);
-                    break;
-            }
-
-            if (text != "") GameScene.Scene.ChatDialog.ReceiveChat(text, ChatType.Hint);
-            BuffList.Insert(0, image);
-        }
-        public void UpdateBuffs()
-        {
-            for (int i = 0; i < BuffList.Count; i++)
-            {
-                MirImageControl image = BuffList[i];
-                Buff buff = Buffs[i];
-
-                int buffImage = BuffImage(buff.Type);
-                MLibrary buffLibrary = Libraries.BuffIcon;
-
-                //ArcherSpells - VampireShot,PoisonShot
-                if (buffImage >= 20000)
-                {
-                    buffImage -= 20000;
-                    buffLibrary = Libraries.MagIcon;
-                }
-
-                if (buffImage >= 10000)
-                {
-                    buffImage -= 10000;
-                    buffLibrary = Libraries.Prguse2;
-                }
-
-                image.Location = new Point((Settings.ScreenWidth - 150) - i * 23 + ((10 * 23) * (i / 10)), 2 + ((i / 10) * 25));
-                image.Hint = buff.ToString();
-                image.Index = buffImage;
-                image.Library = buffLibrary;
-                image.Visible = MainDialog.Visible;
-
-                if (!buff.Infinite && Math.Round((buff.Expire - CMain.Time) / 1000D) <= 5)
-                {
-                    double time = (buff.Expire - CMain.Time) / 100D;
-
-                    if (Math.Round(time) % 10 < 5) image.Index = -1;
-                }
-
-                //((MirLabel)image.Controls[0]).Text = buff.Infinite ? "" : timeRemaining.ToString();   
-            }
-        }
- 
-        public int BuffImage(BuffType type)
-        {
-            switch (type)
-            {
-                //Skills
-                case BuffType.Fury:
-                    return 76;
-                case BuffType.Rage:
-                    return 49;
-                case BuffType.ImmortalSkin:
-                    return 80;
-                case BuffType.CounterAttack:
-                    return 7;
-
-                case BuffType.MagicBooster:
-                    return 73;
-                case BuffType.MagicShield:
-                    return 30;
-
-                case BuffType.Hiding:
-                    return 17;
-                case BuffType.Haste:
-                    return 60;
-                case BuffType.SoulShield:
-                    return 13;
-                case BuffType.BlessedArmour:
-                    return 14;
-                case BuffType.ProtectionField:
-                    return 50;
-                case BuffType.UltimateEnhancer:
-                    return 35;
-                case BuffType.Curse:
-                    return 45;
-                case BuffType.EnergyShield:
-                    return 57;
-
-                case BuffType.SwiftFeet:
-                    return 67;
-                case BuffType.LightBody:
-                    return 68;
-                case BuffType.MoonLight:
-                    return 65;
-                case BuffType.DarkBody:
-                    return 70;
-
-                case BuffType.Concentration:
-                    return 96;
-                case BuffType.VampireShot:
-                    return 100;
-                case BuffType.PoisonShot:
-                    return 102;
-                case BuffType.MentalState:
-                    return 199;
-
-                //Special
-                case BuffType.GameMaster:
-                    return 173;
-                case BuffType.General:
-                    return 182;
-                case BuffType.Exp:
-                    return 260;
-                case BuffType.Drop:
-                    return 162;
-                case BuffType.Gold:
-                    return 168;
-                case BuffType.Knapsack:
-                case BuffType.BagWeight:
-                    return 235;
-                case BuffType.Transform:
-                    return 241;
-                case BuffType.Mentor:
-                    return 248;
-                case BuffType.Mentee:
-                    return 248;
-                case BuffType.RelationshipEXP:
-                    return 201;
-                case BuffType.Guild:
-                    return 203;
-                case BuffType.Rested:
-                    return 240;
-                case BuffType.TemporalFlux:
-                    return 261;
-
-                //Stats
-                case BuffType.Impact:
-                    return 249;
-                case BuffType.Magic:
-                    return 165;
-                case BuffType.Taoist:
-                    return 250;
-                case BuffType.Storm:
-                    return 170;
-                case BuffType.HealthAid:
-                    return 161;
-                case BuffType.ManaAid:
-                    return 169;
-                case BuffType.Defence:
-                    return 166;
-                case BuffType.MagicDefence:
-                    return 158;
-                case BuffType.WonderDrug:
-                    return 252;
-                default:
-                    return 0;
-            }
-        }
         private void KeepAlive(S.KeepAlive p)
         {
             if (p.Time == 0) return;
@@ -2992,13 +2808,13 @@ namespace Client.MirScenes
                     switch (p.Type)
                     {
                         case DamageType.Hit: //add damage level colours
-                            obj.Damages.Add(new Damage(p.Damage.ToString("#,##0"), 1000, obj.Race == ObjectType.Player ? Color.Blue : Color.White, 50));
+                            obj.Damages.Add(new Damage(p.Damage.ToString("#,##0"), 1000, obj.Race == ObjectType.Player ? Color.Red : Color.White, 50));
                             break;
                         case DamageType.Miss:
-                            obj.Damages.Add(new Damage("Miss", 1200, obj.Race == ObjectType.Player ? Color.Blue : Color.White, 50));
+                            obj.Damages.Add(new Damage("Miss", 1200, obj.Race == ObjectType.Player ? Color.LightCoral : Color.LightGray, 50));
                             break;
                         case DamageType.Critical:
-                            obj.Damages.Add(new Damage("Crit", 1000, obj.Race == ObjectType.Player ? Color.Red : Color.Red, 50) { Offset = 15 });
+                            obj.Damages.Add(new Damage("Crit", 1000, obj.Race == ObjectType.Player ? Color.DarkRed : Color.DarkRed, 50) { Offset = 15 });
                             break;
                     }
 
@@ -3492,6 +3308,7 @@ namespace Client.MirScenes
             if (!NPCDialog.Visible) return;
             NPCGoodsDialog.usePearls = false;
             NPCGoodsDialog.NewGoods(p.List);
+            NPCGoodsDialog.UpdatePanelType(p.Type);
             NPCGoodsDialog.Show();
 
 
@@ -3595,7 +3412,29 @@ namespace Client.MirScenes
 
             cell.Locked = false;
         }
+        private void CraftItem(S.CraftItem p)
+        {
+            if (!p.Success) return;
 
+            for (int i = 0; i < CraftDialog.Selected.Count; i++)
+            {
+                MirItemCell cell = CraftDialog.Selected[i].Key;
+                ulong oldItem = CraftDialog.Selected[i].Value;
+
+                if (cell.Item == null || cell.Item.UniqueID != oldItem)
+                {
+                    MirItemCell gridCell = CraftDialog.GetCell(oldItem);
+
+                    if (gridCell != null)
+                        gridCell.Item = null;
+                    cell.Locked = false;
+                }
+            }
+
+            CraftDialog.RefreshCraftCells(CraftDialog.RecipeItem);
+
+            User.RefreshStats();
+        }
         private void ItemRepaired(S.ItemRepaired p)
         {
             UserItem item = null;
@@ -4195,9 +4034,9 @@ namespace Client.MirScenes
                     ShowMentalState(buff);
                     return;
                 }
-
+                
                 Buffs.Add(buff);
-                CreateBuff(buff);
+                BuffsDialog.CreateBuff(buff);
                 User.RefreshStats();
                 ShowMentalState(buff);               
             }
@@ -4237,8 +4076,7 @@ namespace Client.MirScenes
                 }
 
                 Buffs.RemoveAt(i);
-                BuffList[i].Dispose();
-                BuffList.RemoveAt(i);
+                BuffsDialog.RemoveBuff(i);
             }
 
             if (User.ObjectID == p.ObjectID)
@@ -4759,7 +4597,7 @@ namespace Client.MirScenes
             inputBox.InputTextBox.TextBox.KeyPress += (o, e) =>
             {
                 string Allowed = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-                if (!Allowed.Contains(e.KeyChar))
+                if (!Allowed.Contains(e.KeyChar) && e.KeyChar != (char)Keys.Back)
                     e.Handled = true;
             };
             inputBox.OKButton.Click += (o, e) =>
@@ -4936,8 +4774,6 @@ namespace Client.MirScenes
                     User.RefreshStats();
                     break;
                 case 1://retrieve
-
-
                     fromCell = GuildDialog.StorageGrid[p.From];
 
                     if (fromCell == null) return;
@@ -4969,12 +4805,9 @@ namespace Client.MirScenes
                     Bind(toCell.Item);
                     if (fromCell.Item != null) 
                         Bind(fromCell.Item);
-
                     break;
-
                 case 3://failstore
                     fromCell = p.From < User.BeltIdx ? BeltDialog.Grid[p.From] : InventoryDialog.Grid[p.From - User.BeltIdx];
-
                     toCell = GuildDialog.StorageGrid[p.To];
 
                     if (toCell == null || fromCell == null) return;
@@ -4984,7 +4817,6 @@ namespace Client.MirScenes
                     break;
                 case 4://failretrieve
                     toCell = p.From < User.BeltIdx ? BeltDialog.Grid[p.From] : InventoryDialog.Grid[p.From - User.BeltIdx];
-
                     fromCell = GuildDialog.StorageGrid[p.To];
 
                     if (toCell == null || fromCell == null) return;
@@ -4993,7 +4825,9 @@ namespace Client.MirScenes
                     fromCell.Locked = false;
                     break;
                 case 5://failmove
-                    
+                    fromCell = GuildDialog.StorageGrid[p.To];
+                    toCell = GuildDialog.StorageGrid[p.From];
+
                     if (toCell == null || fromCell == null) return;
 
                     GuildDialog.StorageGrid[p.From].Locked = false;
@@ -5103,7 +4937,7 @@ namespace Client.MirScenes
                     buff = new Buff { Type = BuffType.Guild, ObjectID = User.ObjectID, Caster = "Guild", Infinite = true };
 
                     Buffs.Add(buff);
-                    CreateBuff(buff);
+                    BuffsDialog.CreateBuff(buff);
                 }
 
                 GuildDialog.UpdateActiveStats();
@@ -5352,9 +5186,9 @@ namespace Client.MirScenes
 
         private void ResizeStorage(S.ResizeStorage p)
         {
-            User.AddedStorage = true;
-
             Array.Resize(ref Storage, p.Size);
+            User.HasExpandedStorage = p.HasExpandedStorage;
+            User.ExpandedStorageExpiryTime = p.ExpiryTime;
 
             StorageDialog.RefreshStorage2();
         }
@@ -5499,6 +5333,7 @@ namespace Client.MirScenes
             GameScene.Scene.RelationshipDialog.LoverName = p.Name;
             GameScene.Scene.RelationshipDialog.Date = p.Date;
             GameScene.Scene.RelationshipDialog.MapName = p.MapName;
+            GameScene.Scene.RelationshipDialog.MarriedDays = p.MarriedDays;
             GameScene.Scene.RelationshipDialog.UpdateInterface();
         }
 
@@ -5683,7 +5518,6 @@ namespace Client.MirScenes
 
             if (HoverItem.RefineAdded > 0)
             nameLabel.Text = "(*)" + nameLabel.Text;
-
 
             ItemLabel.Size = new Size(Math.Max(ItemLabel.Size.Width, nameLabel.DisplayRectangle.Right + 4),
                 Math.Max(ItemLabel.Size.Height, nameLabel.DisplayRectangle.Bottom));
@@ -5931,7 +5765,7 @@ namespace Client.MirScenes
             maxValue = 0;
             addValue = (!HoverItem.Info.NeedIdentify || HoverItem.Identified) ? HoverItem.Luck : 0;
 
-            if (minValue > 0 || addValue != 0)
+            if (minValue != 0 || addValue != 0)
             {
                 count++;
 
@@ -5945,7 +5779,7 @@ namespace Client.MirScenes
                 }
                 else
                 {
-                    text = string.Format(minValue + addValue > 0 ? "Luck + {0}" : "Curse + {0}", minValue + Math.Abs(addValue));
+                    text = string.Format(minValue + addValue > 0 ? "Luck + {0}" : "Curse + {0}", Math.Abs(minValue + addValue));
                 }
 
                 MirLabel LUCKLabel = new MirLabel
@@ -7050,29 +6884,59 @@ namespace Client.MirScenes
                         if (MapObject.User.Level < realItem.RequiredAmount)
                             colour = Color.Red;
                         break;
-                    case RequiredType.AC:
+                    case RequiredType.MaxAC:
                         text = string.Format("Required AC : {0}", realItem.RequiredAmount);
                         if (MapObject.User.MaxAC < realItem.RequiredAmount)
                             colour = Color.Red;
                         break;
-                    case RequiredType.MAC:
+                    case RequiredType.MaxMAC:
                         text = string.Format("Required MAC : {0}", realItem.RequiredAmount);
                         if (MapObject.User.MaxMAC < realItem.RequiredAmount)
                             colour = Color.Red;
                         break;
-                    case RequiredType.DC:
+                    case RequiredType.MaxDC:
                         text = string.Format("Required DC : {0}", realItem.RequiredAmount);
                         if (MapObject.User.MaxDC < realItem.RequiredAmount)
                             colour = Color.Red;
                         break;
-                    case RequiredType.MC:
+                    case RequiredType.MaxMC:
                         text = string.Format("Required MC : {0}", realItem.RequiredAmount);
                         if (MapObject.User.MaxMC < realItem.RequiredAmount)
                             colour = Color.Red;
                         break;
-                    case RequiredType.SC:
+                    case RequiredType.MaxSC:
                         text = string.Format("Required SC : {0}", realItem.RequiredAmount);
                         if (MapObject.User.MaxSC < realItem.RequiredAmount)
+                            colour = Color.Red;
+                        break;
+                    case RequiredType.MaxLevel:
+                        text = string.Format("Maximum Level : {0}", realItem.RequiredAmount);
+                        if (MapObject.User.Level > realItem.RequiredAmount)
+                            colour = Color.Red;
+                        break;
+                    case RequiredType.MinAC:
+                        text = string.Format("Required Base AC : {0}", realItem.RequiredAmount);
+                        if (MapObject.User.MinAC < realItem.RequiredAmount)
+                            colour = Color.Red;
+                        break;
+                    case RequiredType.MinMAC:
+                        text = string.Format("Required Base MAC : {0}", realItem.RequiredAmount);
+                        if (MapObject.User.MinMAC < realItem.RequiredAmount)
+                            colour = Color.Red;
+                        break;
+                    case RequiredType.MinDC:
+                        text = string.Format("Required Base DC : {0}", realItem.RequiredAmount);
+                        if (MapObject.User.MinDC < realItem.RequiredAmount)
+                            colour = Color.Red;
+                        break;
+                    case RequiredType.MinMC:
+                        text = string.Format("Required Base MC : {0}", realItem.RequiredAmount);
+                        if (MapObject.User.MinMC < realItem.RequiredAmount)
+                            colour = Color.Red;
+                        break;
+                    case RequiredType.MinSC:
+                        text = string.Format("Required Base SC : {0}", realItem.RequiredAmount);
+                        if (MapObject.User.MinSC < realItem.RequiredAmount)
                             colour = Color.Red;
                         break;
                     default:
@@ -7742,6 +7606,57 @@ namespace Client.MirScenes
 
             #endregion
 
+            if (HoverItem.RentalInformation?.RentalLocked == false)
+            {
+
+                count++;
+                MirLabel OWNERLabel = new MirLabel
+                {
+                    AutoSize = true,
+                    ForeColour = Color.DarkKhaki,
+                    Location = new Point(4, ItemLabel.DisplayRectangle.Bottom),
+                    OutLine = true,
+                    Parent = ItemLabel,
+                    Text = "Item rented from: " + HoverItem.RentalInformation.OwnerName
+                };
+
+                ItemLabel.Size = new Size(Math.Max(ItemLabel.Size.Width, OWNERLabel.DisplayRectangle.Right + 4),
+                    Math.Max(ItemLabel.Size.Height, OWNERLabel.DisplayRectangle.Bottom));
+
+                double remainingTime = (HoverItem.RentalInformation.ExpiryDate - DateTime.Now).TotalSeconds;
+
+                count++;
+                MirLabel RENTALLabel = new MirLabel
+                {
+                    AutoSize = true,
+                    ForeColour = Color.Khaki,
+                    Location = new Point(4, ItemLabel.DisplayRectangle.Bottom),
+                    OutLine = true,
+                    Parent = ItemLabel,
+                    Text = remainingTime > 0 ? string.Format("Rental expires in: {0}", Functions.PrintTimeSpanFromSeconds(remainingTime)) : "Rental expired"
+                };
+
+                ItemLabel.Size = new Size(Math.Max(ItemLabel.Size.Width, RENTALLabel.DisplayRectangle.Right + 4),
+                    Math.Max(ItemLabel.Size.Height, RENTALLabel.DisplayRectangle.Bottom));
+            }
+            else if (HoverItem.RentalInformation?.RentalLocked == true && HoverItem.RentalInformation.ExpiryDate > DateTime.Now)
+            {
+                count++;
+                var remainingTime = (HoverItem.RentalInformation.ExpiryDate - DateTime.Now).TotalSeconds;
+                var RentalLockLabel = new MirLabel
+                {
+                    AutoSize = true,
+                    ForeColour = Color.DarkKhaki,
+                    Location = new Point(4, ItemLabel.DisplayRectangle.Bottom),
+                    OutLine = true,
+                    Parent = ItemLabel,
+                    Text = remainingTime > 0 ? string.Format("Rental lock expires in: {0}", Functions.PrintTimeSpanFromSeconds(remainingTime)) : "Rental lock expired"
+                };
+
+                ItemLabel.Size = new Size(Math.Max(ItemLabel.Size.Width, RentalLockLabel.DisplayRectangle.Right + 4),
+                    Math.Max(ItemLabel.Size.Height, RentalLockLabel.DisplayRectangle.Bottom));
+            }
+
             if (count > 0)
             {
                 ItemLabel.Size = new Size(ItemLabel.Size.Width, ItemLabel.Size.Height + 4);
@@ -7913,10 +7828,24 @@ namespace Client.MirScenes
             if (!string.IsNullOrEmpty(HoverItem.Info.ToolTip))
             {
                 count++;
+
+                MirLabel IDLabel = new MirLabel
+                {
+                    AutoSize = true,
+                    ForeColour = Color.DarkKhaki,
+                    Location = new Point(4, ItemLabel.DisplayRectangle.Bottom),
+                    OutLine = true,
+                    Parent = ItemLabel,
+                    Text = "Item Description:"
+                };
+
+                ItemLabel.Size = new Size(Math.Max(ItemLabel.Size.Width, IDLabel.DisplayRectangle.Right + 4),
+                    Math.Max(ItemLabel.Size.Height, IDLabel.DisplayRectangle.Bottom));
+
                 MirLabel TOOLTIPLabel = new MirLabel
                 {
                     AutoSize = true,
-                    ForeColour = Color.Goldenrod,
+                    ForeColour = Color.Khaki,
                     Location = new Point(4, ItemLabel.DisplayRectangle.Bottom),
                     OutLine = true,
                     Parent = ItemLabel,
@@ -8164,6 +8093,135 @@ namespace Client.MirScenes
         public void Opendoor(S.Opendoor p)
         {
             MapControl.OpenDoor(p.DoorIndex, p.Close);
+        }
+
+        private void RentedItems(S.GetRentedItems p)
+        {
+            ItemRentalDialog.ReceiveRentedItems(p.RentedItems);
+        }
+
+        private void ItemRentalRequest(S.ItemRentalRequest p)
+        {
+            if (!p.Renting)
+            {
+                GuestItemRentDialog.SetGuestName(p.Name);
+                ItemRentingDialog.OpenItemRentalDialog();
+            }
+            else
+            {
+                GuestItemRentingDialog.SetGuestName(p.Name);
+                ItemRentDialog.OpenItemRentDialog();
+            }
+
+            ItemRentalDialog.Visible = false;
+        }
+
+        private void ItemRentalFee(S.ItemRentalFee p)
+        {
+            GuestItemRentDialog.SetGuestFee(p.Amount);
+            ItemRentDialog.RefreshInterface();
+        }
+
+        private void ItemRentalPeriod(S.ItemRentalPeriod p)
+        {
+            GuestItemRentingDialog.GuestRentalPeriod = p.Days;
+            ItemRentingDialog.RefreshInterface();
+        }
+
+        private void DepositRentalItem(S.DepositRentalItem p)
+        {
+            var fromCell = p.From < User.BeltIdx ? BeltDialog.Grid[p.From] : InventoryDialog.Grid[p.From - User.BeltIdx];
+            var toCell = ItemRentingDialog.ItemCell;
+
+            if (toCell == null || fromCell == null)
+                return;
+ 
+            toCell.Locked = false;
+            fromCell.Locked = false;
+         
+            if (!p.Success)
+                return;
+
+            toCell.Item = fromCell.Item;
+            fromCell.Item = null;
+            User.RefreshStats();
+
+            if (ItemRentingDialog.RentalPeriod == 0)
+                ItemRentingDialog.InputRentalPeroid();
+        }
+
+        private void RetrieveRentalItem(S.RetrieveRentalItem p)
+        {
+            var fromCell = ItemRentingDialog.ItemCell;
+            var toCell = p.To < User.BeltIdx ? BeltDialog.Grid[p.To] : InventoryDialog.Grid[p.To - User.BeltIdx];
+
+            if (toCell == null || fromCell == null)
+                return;
+
+            toCell.Locked = false;
+            fromCell.Locked = false;
+
+            if (!p.Success)
+                return;
+
+            toCell.Item = fromCell.Item;
+            fromCell.Item = null;
+            User.RefreshStats();
+        }
+
+        private void UpdateRentalItem(S.UpdateRentalItem p)
+        {
+            GuestItemRentingDialog.GuestLoanItem = p.LoanItem;
+            ItemRentDialog.RefreshInterface();
+        }
+
+        private void CancelItemRental(S.CancelItemRental p)
+        {
+            User.RentalGoldLocked = false;
+            User.RentalItemLocked = false;
+
+            ItemRentingDialog.Reset();
+            ItemRentDialog.Reset();
+
+            var messageBox = new MirMessageBox("Item rental cancelled.\r\n" +
+                                               "To complete item rental please face the other party throughout the transaction.");
+            messageBox.Show();
+        }
+
+        private void ItemRentalLock(S.ItemRentalLock p)
+        {
+            if (!p.Success)
+                return;
+            
+            User.RentalGoldLocked = p.GoldLocked;
+            User.RentalItemLocked = p.ItemLocked;
+
+            if (User.RentalGoldLocked)
+                ItemRentDialog.Lock();
+            else if (User.RentalItemLocked)
+                ItemRentingDialog.Lock();
+        }
+
+        private void ItemRentalPartnerLock(S.ItemRentalPartnerLock p)
+        {
+            if (p.GoldLocked)
+                GuestItemRentDialog.Lock();
+            else if (p.ItemLocked)
+                GuestItemRentingDialog.Lock();
+        }
+
+        private void CanConfirmItemRental(S.CanConfirmItemRental p)
+        {
+            ItemRentingDialog.EnableConfirmButton();
+        }
+
+        private void ConfirmItemRental(S.ConfirmItemRental p)
+        {
+            User.RentalGoldLocked = false;
+            User.RentalItemLocked = false;
+
+            ItemRentingDialog.Reset();
+            ItemRentDialog.Reset();
         }
 
         #region Disposable
@@ -9028,7 +9086,7 @@ namespace Client.MirScenes
                     if (x < 0) continue;
                     if (x >= Width) break;
                     int imageIndex = (M2CellInfo[x, y].FrontImage & 0x7FFF) - 1;
-                    //if (M2CellInfo[x, y].Light <= 0 || M2CellInfo[x, y].Light >= 10) continue;
+                    if (M2CellInfo[x, y].Light <= 0 || M2CellInfo[x, y].Light >= 10) continue;
                     if (M2CellInfo[x, y].Light == 0) continue;
 
                     Color lightIntensity;
@@ -9291,7 +9349,7 @@ namespace Client.MirScenes
                     }
                 }
             }
-            if (AutoHit)
+            if (AutoHit && !User.RidingMount)
             {
                 if (CMain.Time > GameScene.AttackTime)
                 {
@@ -9341,7 +9399,7 @@ namespace Client.MirScenes
                         if (MapObject.MouseObject is NPCObject || (MapObject.MouseObject is PlayerObject && MapObject.MouseObject != User)) break;
                         if (MapObject.MouseObject is MonsterObject && MapObject.MouseObject.AI == 70) break;
 
-                        if (CMain.Alt)
+                        if (CMain.Alt && !User.RidingMount)
                         {
                             User.QueuedAction = new QueuedAction { Action = MirAction.Harvest, Direction = direction, Location = User.CurrentLocation };
                             return;

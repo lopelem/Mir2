@@ -39,7 +39,8 @@ namespace Client
                             NPCPath = @".\Data\NPC\",
                             CArmourPath = @".\Data\CArmour\",
                             CWeaponPath = @".\Data\CWeapon\",
-                            CHairPath = @".\Data\CHair\",
+							CWeaponEffectPath = @".\Data\CWeaponEffect\",
+							CHairPath = @".\Data\CHair\",
                             AArmourPath = @".\Data\AArmour\",
                             AWeaponPath = @".\Data\AWeapon\",
                             AHairPath = @".\Data\AHair\",
@@ -115,6 +116,7 @@ namespace Client
         //Game
         public static string AccountID = "",
                              Password = "";
+
         public static bool
             SkillMode = false,
             SkillBar = true,
@@ -127,7 +129,8 @@ namespace Client
             TransparentChat = false,
             DuraView = false,
             DisplayDamage = true,
-            TargetDead = false;
+            TargetDead = false,
+            ExpandedBuffWindow = true;
 
         public static int[,] SkillbarLocation = new int[2, 2] { { 0, 0 }, { 216, 0 }  };
 
@@ -164,7 +167,7 @@ namespace Client
         public static string P_Login = string.Empty;
         public static string P_Password = string.Empty;
         public static string P_ServerName = string.Empty;
-        public static string P_BrowserAddress = "http://launcher.mir2wiki.com/web/";
+        public static string P_BrowserAddress = "https://launcher.mironline.co.uk/web/";
         public static string P_Client = Application.StartupPath + "\\";
         public static bool P_AutoStart = false;
 
@@ -214,6 +217,7 @@ namespace Client
             TransparentChat = Reader.ReadBoolean("Game", "TransparentChat", TransparentChat);
             DisplayDamage = Reader.ReadBoolean("Game", "DisplayDamage", DisplayDamage);
             TargetDead = Reader.ReadBoolean("Game", "TargetDead", TargetDead);
+            ExpandedBuffWindow = Reader.ReadBoolean("Game", "ExpandedBuffWindow", ExpandedBuffWindow);
             DuraView = Reader.ReadBoolean("Game", "DuraWindow", DuraView);
 
             for (int i = 0; i < SkillbarLocation.Length / 2; i++)
@@ -285,6 +289,7 @@ namespace Client
             Reader.Write("Game", "TransparentChat", TransparentChat);
             Reader.Write("Game", "DisplayDamage", DisplayDamage);
             Reader.Write("Game", "TargetDead", TargetDead);
+            Reader.Write("Game", "ExpandedBuffWindow", ExpandedBuffWindow);
             Reader.Write("Game", "DuraWindow", DuraView);
 
             for (int i = 0; i < SkillbarLocation.Length / 2; i++)
@@ -333,6 +338,7 @@ namespace Client
                 TrackedQuests[i] = Reader.ReadInt32("Q-" + Charname, "Quest-" + i.ToString(), -1);
             }
         }
+
         public static void SaveTrackedQuests(string Charname)
         {
             //Quests

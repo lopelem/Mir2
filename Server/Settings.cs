@@ -18,6 +18,7 @@ namespace Server
                             ConquestsPath = @".\Conquests\",
                             NPCPath = EnvirPath + @".\NPCs\",
                             GoodsPath = EnvirPath + @".\Goods\",
+                            RecipePath = EnvirPath + @"Recipe\",
                             QuestPath = EnvirPath + @".\Quests\",
                             DropPath = EnvirPath + @".\Drops\",
                             RoutePath = EnvirPath + @".\Routes\",
@@ -74,6 +75,7 @@ namespace Server
         //Optional
         public static bool SafeZoneBorder = false,
                            SafeZoneHealing = false,
+                           GameMasterEffect = false,
                            GatherOrbsPerLevel = true,
                            ExpMobLevelDifference = true;
 
@@ -144,7 +146,8 @@ namespace Server
 
         public static string HealRing = "Healing",
                              FireRing = "FireBall",
-                             ParalysisRing = "Paralysis";
+                             ParalysisRing = "Paralysis",
+                             BlinkSkill = "Blink";
 
         public static string PKTownMapName = "3";
         public static int PKTownPositionX = 848,
@@ -155,7 +158,7 @@ namespace Server
 
 
         //IntelligentCreature
-        public static string[] IntelligentCreatureNameList = { "BabyPig", "Chick", "Kitten", "BabySkeleton", "Baekdon", "Wimaen", "BlackKitten", "BabyDragon", "OlympicFlame", "BabySnowMan", "Frog", "BabyMonkey" };
+        public static string[] IntelligentCreatureNameList = { "BabyPig", "Chick", "Kitten", "BabySkeleton", "Baekdon", "Wimaen", "BlackKitten", "BabyDragon", "OlympicFlame", "BabySnowMan", "Frog", "BabyMonkey", "AngryBird" };
         public static string CreatureBlackStoneName = "BlackCreatureStone";
 
         //Fishing Settings
@@ -304,6 +307,7 @@ namespace Server
             SafeZoneHealing = Reader.ReadBoolean("Optional", "SafeZoneHealing", SafeZoneHealing);
             GatherOrbsPerLevel = Reader.ReadBoolean("Optional", "GatherOrbsPerLevel", GatherOrbsPerLevel);
             ExpMobLevelDifference = Reader.ReadBoolean("Optional", "ExpMobLevelDifference", ExpMobLevelDifference);
+            GameMasterEffect = Reader.ReadBoolean("Optional", "GameMasterEffect", GameMasterEffect);
 
             //Database
             SaveDelay = Reader.ReadInt32("Database", "SaveDelay", SaveDelay);
@@ -366,6 +370,7 @@ namespace Server
             //Items
             HealRing = Reader.ReadString("Items", "HealRing", HealRing);
             FireRing = Reader.ReadString("Items", "FireRing", FireRing);
+            BlinkSkill = Reader.ReadString("Items", "BlinkSkill", BlinkSkill);
 
             //PKTown
             PKTownMapName = Reader.ReadString("PKTown", "PKTownMapName", PKTownMapName);
@@ -427,6 +432,10 @@ namespace Server
                 Directory.CreateDirectory(NameListPath);
             if (!Directory.Exists(LogPath))
                 Directory.CreateDirectory(LogPath);
+            if (!Directory.Exists(ReportPath))
+                Directory.CreateDirectory(ReportPath);
+            if (!Directory.Exists(RecipePath))
+                Directory.CreateDirectory(RecipePath);
 
             string fileName = Path.Combine(Settings.NPCPath, DefaultNPCFilename + ".txt");
 
@@ -501,6 +510,7 @@ namespace Server
             Reader.Write("Optional", "SafeZoneHealing", SafeZoneHealing);
             Reader.Write("Optional", "GatherOrbsPerLevel", GatherOrbsPerLevel);
             Reader.Write("Optional", "ExpMobLevelDifference", ExpMobLevelDifference);
+            Reader.Write("Optional", "GameMasterEffect", GameMasterEffect);
 
             //Database
             Reader.Write("Database", "SaveDelay", SaveDelay);
@@ -567,6 +577,7 @@ namespace Server
 
             Reader.Write("Items", "HealRing", HealRing);
             Reader.Write("Items", "FireRing", FireRing);
+            Reader.Write("Items", "BlinkSkill", BlinkSkill);
 
             Reader.Write("PKTown", "PKTownMapName", PKTownMapName);
             Reader.Write("PKTown", "PKTownPositionX", PKTownPositionX);
