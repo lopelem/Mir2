@@ -182,12 +182,12 @@ namespace Server.MirEnvir
         static Envir()
             {
             AccountIDReg =
-                new Regex(@"^[A-Za-z0-9]{" + Globals.MinAccountIDLength + "," + Globals.MaxAccountIDLength + "}$");
+                new Regex(@"^[A-Za-z0-9_\-\u4e00-\u9fa5]{" + Globals.MinAccountIDLength + "," + Globals.MaxAccountIDLength + "}$");
             PasswordReg =
                 new Regex(@"^[A-Za-z0-9]{" + Globals.MinPasswordLength + "," + Globals.MaxPasswordLength + "}$");
             EMailReg = new Regex(@"\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*");
             CharacterReg =
-                new Regex(@"^[A-Za-z0-9]{" + Globals.MinCharacterNameLength + "," + Globals.MaxCharacterNameLength +
+                new Regex(@"^[A-Za-z0-9_\-\u4e00-\u9fa5]{" + Globals.MinCharacterNameLength + "," + Globals.MaxCharacterNameLength +
                           "}$");
 
             string path = Path.Combine(Settings.EnvirPath, "DisabledChars.txt");

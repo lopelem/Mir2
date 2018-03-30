@@ -464,7 +464,7 @@ namespace Client.MirScenes
             private void AccountIDTextBox_TextChanged(object sender, EventArgs e)
             {
                 Regex reg =
-                    new Regex(@"^[A-Za-z0-9]{" + Globals.MinAccountIDLength + "," + Globals.MaxAccountIDLength + "}$");
+                    new Regex(@"^[A-Za-z0-9_\-\u4e00-\u9fa5]{" + Globals.MinAccountIDLength + "," + Globals.MaxAccountIDLength + "}$");
 
                 if (string.IsNullOrEmpty(AccountIDTextBox.Text) || !reg.IsMatch(AccountIDTextBox.TextBox.Text))
                 {
@@ -950,7 +950,7 @@ namespace Client.MirScenes
 
             private void AccountIDTextBox_TextChanged(object sender, EventArgs e)
             {
-                Regex reg = new Regex(@"^[A-Za-z0-9]{" + Globals.MinAccountIDLength + "," + Globals.MaxAccountIDLength + "}$");
+                Regex reg = new Regex(@"^[A-Za-z0-9_\-\u4e00-\u9fa5]{" + Globals.MinAccountIDLength + "," + Globals.MaxAccountIDLength + "}$");
 
                 if (string.IsNullOrEmpty(AccountIDTextBox.Text) || !reg.IsMatch(AccountIDTextBox.Text))
                 {
@@ -1301,7 +1301,7 @@ namespace Client.MirScenes
 
             private void AccountIDTextBox_TextChanged(object sender, EventArgs e)
             {
-                Regex reg = new Regex(@"^[A-Za-z0-9]{" + Globals.MinAccountIDLength + "," + Globals.MaxAccountIDLength + "}$");
+                Regex reg = new Regex(@"^[A-Za-z0-9_\-\u4e00-\u9fa5]{" + Globals.MinAccountIDLength + "," + Globals.MaxAccountIDLength + "}$");
 
                 if (string.IsNullOrEmpty(AccountIDTextBox.Text) || !reg.IsMatch(AccountIDTextBox.Text))
                 {
