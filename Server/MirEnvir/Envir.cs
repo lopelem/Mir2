@@ -4396,33 +4396,50 @@ namespace Server.MirEnvir
                 Ranking.Add(NewRank);
                 return Ranking.Count;
                 }
-
-            if (Ranking.Count < RankCount)  //kenlee
-
-                for (int i = 0; i < Ranking.Count; i++)
+			//注释掉原来的逻辑.kenlee
+            //for (int i = 0; i < Ranking.Count; i++)
+            //    {
+            //    //if level is lower
+            //    if (Ranking[i].level < NewRank.level)
+            //        {
+            //        Ranking.Insert(i, NewRank);
+            //        return i + 1;
+            //        }
+            //    //if exp is lower but level = same
+            //    if ((Ranking[i].level == NewRank.level) && (Ranking[i].Experience < NewRank.Experience))
+            //        {
+            //        Ranking.Insert(i, NewRank);
+            //        return i + 1;
+            //        }
+            //    }
+            //if (Ranking.Count < RankCount)
+            //    {
+            //    Ranking.Add(NewRank);
+            //    return Ranking.Count;
+            if (Ranking.Count < RankCount)  //改写了逻辑.kenlee
+            for (int i = 0; i < Ranking.Count; i++)
                 {
-                    //if level is lower
+                //if level is lower
                     if (Ranking[i].Name == NewRank.Name && Ranking[i].level < NewRank.level)
                     {
-                        Ranking.Insert(i, NewRank);
-                        return i + 1;
+                    Ranking.Insert(i, NewRank);
+                    return i + 1;
                     }
-                    //if exp is lower but level = same
+                //if exp is lower but level = same
                     if (Ranking[i].Name == NewRank.Name && (Ranking[i].level == NewRank.level) && (Ranking[i].Experience < NewRank.Experience))
                     {
-                        Ranking.Insert(i, NewRank);
-                        return i + 1;
+                    Ranking.Insert(i, NewRank);
+                    return i + 1;
                     }
 
 
                     if (Ranking[i].Name == NewRank.Name && Ranking[i].level == NewRank.level && Ranking[i].Experience == NewRank.Experience) { return 0; };
-
                     if (Ranking[i].Name != NewRank.Name)
-                    { 
-                      Ranking.Add(NewRank);
-                       return Ranking.Count;
+                {
+                Ranking.Add(NewRank);
+                return Ranking.Count;
                      }
-                 }
+                }
             return 0;
             }
 
@@ -4513,7 +4530,7 @@ namespace Server.MirEnvir
                         }
                     }
                 }
-            //next class based top
+            //next class based top  注释掉.kenlee
             //if (info.Level >= RankBottomLevel[(byte)info.Class + 1])
             //    {
             //    Ranking = RankTop;
@@ -4557,7 +4574,7 @@ namespace Server.MirEnvir
                         RankBottomLevel[0] = NewRank.level;
                     }
                 }
-            //now check class top kenlee.注释掉
+            //now check class top 注释掉.kenlee
             //if (info.Level >= RankBottomLevel[(byte)info.Class + 1])
             //    {
             //    Ranking = RankClass[(byte)info.Class];

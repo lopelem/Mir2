@@ -76,9 +76,7 @@ namespace Server.MirDatabase
                 ClassRequired = Convert.ToString(readerNPCInfo["ClassRequired"]);
                 Conquest = Convert.ToInt32(readerNPCInfo["Conquest"]);
                 FlagNeeded = Convert.ToInt32(readerNPCInfo["FlagNeeded"]);
-
-
-        }
+            }
 
         public static void SaveNPCInfoDB(NPCInfo InfoNPCList)
             {

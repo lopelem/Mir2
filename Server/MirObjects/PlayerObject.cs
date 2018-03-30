@@ -20661,6 +20661,7 @@ Enqueue(new S.DeleteItem { UniqueID = item.UniqueID, Count = count });
                 }
             else
                 {
+				//注释掉了原来的语句，把RankType == 0的语句复制过来了. kenlee
                 //Enqueue(new S.Rankings { Listings = Envir.RankClass[RankType - 1], RankType = RankType, MyRank = (byte)Class == (RankType - 1) ? Info.Rank[1] : 0 }); 
                 Enqueue(new S.Rankings { Listings = Envir.RankTop, RankType = RankType, MyRank = Info.Rank[0] });
             }
